@@ -1,0 +1,12 @@
+#!/bin/bash -ev
+apt-get update
+apt-get install -y `cat packages`
+cp buildd.conf /etc/buildd
+cp buildd-fstab /etc/schroot/buildd/fstab
+sed s!'___fbddir___'!`pwd`! rc.local > /etc/rc.local
+chmod 755 /etc/rc.local
+mkdir -p /build
+chown buildd /build
+rm -rf /var/lib/buildd
+ln -s /build/buildd /var/lib/buildd
+sbuild-adduser buildd

@@ -1,0 +1,52 @@
+#!/bin/bash -ev
+swapoff -a
+umount /dev/sda* || true
+( ! grep sda /etc/mtab >/dev/null ) || (echo sda is still mounted after unmount attempts aborting ; false)
+if [ "$1" == "reformat" ]; then
+	dd if=/dev/zero of=/dev/sda bs=64M count=1
+	parted -s -- /dev/sda mklabel msdos
+	parted -s -a optimal -- /dev/sda mkpart primary btrfs 1MiB -10GiB
+	parted -s -a optimal -- /dev/sda mkpart primary linux-swap -10GiB 100%
+	partprobe
+	mkfs.btrfs /dev/sda1
+	mkswap /dev/sda2
+fi
+mount /dev/sda1 /build
+if [ "$1" == "reformat" ]; then
+	mkdir /build/buildd
+	chown buildd:buildd /build/buildd
+	mkdir /build/buildd/upload
+	chown buildd:buildd /build/buildd/upload
+	mkdir /build/buildd/build
+	chown buildd:buildd /build/buildd/build
+	mkdir /build/buildd/old-logs/
+	chown buildd:buildd /build/buildd/old-logs
+	mkdir /build/sessions
+	btrfs subvolume create /build/buster-armhf-rpi-staging/
+	rm -f /etc/schroot/chroot.d/buster-staging-armhf-sbuild-*
+	ln -fs buster /usr/share/debootstrap/scripts/buster-staging
+	sbuild-createchroot --keyring /usr/share/keyrings/raspbian-archive-keyring.gpg buster-staging /build/buster-armhf-rpi-staging http://mirrordirector.raspbian.org/raspbian
+fi
+rm -f /etc/schroot/chroot.d/buster-staging-armhf-sbuild-*
+cat > /etc/schroot/chroot.d/buster-staging-armhf-sbuild-FJAV00 <<EOF
+[buster-staging-armhf-sbuild]
+description=Debian buster-staging/armhf autobuilder
+groups=root,sbuild
+root-groups=root,sbuild
+profile=buildd
+type=btrfs-snapshot
+btrfs-source-subvolume=/build/buster-armhf-rpi-staging
+btrfs-snapshot-directory=/build/sessions
+EOF
+#cp -a /root/.ssh /build/buildd
+rm -rf /build/buildd/.ssh
+mkdir /build/buildd/.ssh
+chown -R buildd:buildd /build/buildd/.ssh
+su buildd -c 'ssh-keygen -t rsa -b 4096 -N "" -f /build/buildd/.ssh/id_rsa'
+printf '[127.0.0.1]:8022 ' | cat - /etc/ssh/ssh_host_rsa_key.pub > /build/buildd/.ssh/known_hosts
+chown -R buildd:buildd /build/buildd/.ssh
+
+grep -v sda /etc/fstab | sponge /etc/fstab
+echo /dev/sda1             /build          btrfs   defaults          0       0 >> /etc/fstab
+echo /dev/sda2             swap            swap    defaults          0       0 >> /etc/fstab
+reboot

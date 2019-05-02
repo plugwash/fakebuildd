@@ -1,0 +1,3 @@
+#!/bin/bash -ev
+grep -v sda /etc/fstab | sponge /etc/fstab
+reboot
