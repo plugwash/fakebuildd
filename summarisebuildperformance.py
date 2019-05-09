@@ -27,6 +27,11 @@ def myparsedt(s):
 
 starttime = myparsedt(sys.argv[1])
 
+if len(sys.argv) >=3:
+	minbuilds = int(sys.argv[2])
+else:
+	minbuilds = 0
+
 results = defaultdict(list)
 
 for fn in os.listdir('/build/buildd/logs'):
@@ -67,12 +72,13 @@ for fn in os.listdir('/build/buildd/logs'):
 
 listforsorting = []
 for (package, timedeltas) in results.items():
-	mean = sum(timedeltas,timedelta(0)) / len(timedeltas)
-	if len(timedeltas) > 1:
-		sstd = timedelta(seconds=stdev(td.total_seconds() for td in timedeltas))
-	else:
-		sstd = None
-	listforsorting.append((len(timedeltas),mean,sstd,package))
+	if len(timedeltas) >= minbuilds:
+		mean = sum(timedeltas,timedelta(0)) / len(timedeltas)
+		if len(timedeltas) > 1:
+			sstd = timedelta(seconds=stdev(td.total_seconds() for td in timedeltas))
+		else:
+			sstd = None
+		listforsorting.append((len(timedeltas),mean,sstd,package))
 listforsorting.sort()
 
 for num,averagebuildtime,sstd,package in listforsorting:
