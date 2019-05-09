@@ -78,9 +78,9 @@ for (package, timedeltas) in results.items():
 			sstd = timedelta(seconds=stdev(td.total_seconds() for td in timedeltas))
 		else:
 			sstd = None
-		listforsorting.append((len(timedeltas),mean,sstd,package))
+		listforsorting.append((package,len(timedeltas),mean,sstd))
 listforsorting.sort()
 
-for num,averagebuildtime,sstd,package in listforsorting:
+for package,num,averagebuildtime,sstd in listforsorting:
 	print(package+': '+str(averagebuildtime) +' (count: '+str(num)+' sstd: '+str(sstd)+'))')
 
