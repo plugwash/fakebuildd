@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from collections import defaultdict
+from statistics import stdev
 import os
 import sys
 
@@ -66,9 +67,14 @@ for fn in os.listdir('/build/buildd/logs'):
 
 listforsorting = []
 for (package, timedeltas) in results.items():
-	listforsorting.append((sum(timedeltas,timedelta(0)) / len(timedeltas),package))
+	mean = sum(timedeltas,timedelta(0)) / len(timedeltas)
+	if len(timedeltas) > 1:
+		sstd = timedelta(seconds=stdev(td.total_seconds() for td in timedeltas))
+	else:
+		sstd = None
+	listforsorting.append((len(timedeltas),mean,sstd,package))
 listforsorting.sort()
 
-for averagebuildtime,package in listforsorting:
-	print(package+': '+str(averagebuildtime))
+for num,averagebuildtime,sstd,package in listforsorting:
+	print(package+': '+str(averagebuildtime) +' (count: '+str(num)+' sstd: '+str(sstd)+'))')
 
